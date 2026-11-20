@@ -41,18 +41,19 @@ let tasks=[
 {id:8,title:'檢查測試環境問題清單',description:'—',due:'2026-10-28',importance:'medium',status:'done',assignee:'me',reminder:'1'},
 {id:9,title:'整理客戶回饋摘要',description:'歸納本月客服回報',due:'2026-10-31',importance:'high',status:'todo',assignee:'yuki',reminder:'1'}
 ];
+const demoTasks=tasks.map(task=>({...task}));
 const today='2026-10-30'; const labels={todo:'待處理',doing:'進行中',done:'已完成'};let activeFilter='all';let currentView='board';
 function fmtDate(d){let dt=new Date(d+'T12:00:00');return `${dt.getMonth()+1}月${dt.getDate()}日`}
 function daysAway(d){return Math.round((new Date(d+'T12:00:00')-new Date(today+'T12:00:00'))/86400000)}
 function dueText(t){let n=daysAway(t.due);if(t.status==='done')return `完成於 ${fmtDate(t.due)}`;if(n<0)return `逾期 ${Math.abs(n)} 天`;if(n===0)return '今天到期';if(n===1)return '明天到期';return fmtDate(t.due)+' 到期'}
 function sortTasks(arr){const imp={high:0,medium:1,low:2};return arr.sort((a,b)=>{let ao=a.status==='done'?1:0,bo=b.status==='done'?1:0;if(ao!==bo)return ao-bo;let ad=daysAway(a.due),bd=daysAway(b.due);if((ad<0)!==(bd<0))return ad<0?-1:1;if(ad!==bd)return ad-bd;return imp[a.importance]-imp[b.importance]})}
-function render(){let visible=tasks.filter(t=>t.assignee==='me');if(activeFilter==='open')visible=visible.filter(t=>t.status!=='done');if(activeFilter==='high')visible=visible.filter(t=>t.importance==='high'&&t.status!=='done');let board=document.getElementById('board');board.innerHTML='';['todo','doing','done'].forEach(status=>{let list=sortTasks(visible.filter(t=>t.status===status));let col=document.createElement('div');col.className='column '+(status==='done'?'done':'');col.innerHTML=`<div class="col-head"><span class="col-dot ${status}"></span><span class="col-title">${labels[status]}</span><span class="col-count">${list.length}</span><span class="col-menu">···</span></div><div class="cards">${list.map(card).join('')}${status!=='done'?`<button class="add-task" data-add="${status}">＋ 新增任務</button>`:''}</div>`;board.appendChild(col)});document.getElementById('openCount').textContent=tasks.filter(t=>t.assignee==='me'&&t.status!=='done').length;document.getElementById('overdueCount').textContent=tasks.filter(t=>t.assignee==='me'&&t.status!=='done'&&daysAway(t.due)<0).length;document.getElementById('navCount').textContent=tasks.filter(t=>t.assignee==='me'&&t.status!=='done').length;document.getElementById('todayCount').textContent=tasks.filter(t=>t.assignee==='me'&&t.status!=='done'&&daysAway(t.due)===0).length;board.querySelectorAll('.check').forEach(b=>b.onclick=e=>{e.stopPropagation();toggleDone(+b.dataset.id)});board.querySelectorAll('.add-task').forEach(b=>b.onclick=()=>openModal(b.dataset.add));board.querySelectorAll('.task').forEach(el=>el.onclick=()=>showToast('點擊任務可查看詳細資訊；此原型可透過勾選框完成任務。'));}
+function render(){let visible=tasks.filter(t=>t.assignee==='me');if(activeFilter==='open')visible=visible.filter(t=>t.status!=='done');if(activeFilter==='high')visible=visible.filter(t=>t.importance==='high'&&t.status!=='done');let board=document.getElementById('board');board.innerHTML='';['todo','doing','done'].forEach(status=>{let list=sortTasks(visible.filter(t=>t.status===status));let col=document.createElement('div');col.className='column '+(status==='done'?'done':'');col.innerHTML=`<div class="col-head"><span class="col-dot ${status}"></span><span class="col-title">${labels[status]}</span><span class="col-count">${list.length}</span><span class="col-menu">···</span></div><div class="cards">${list.map(card).join('')}${status!=='done'?`<button class="add-task" data-add="${status}">＋ 新增任務</button>`:''}</div>`;board.appendChild(col)});document.getElementById('openCount').textContent=tasks.filter(t=>t.assignee==='me'&&t.status!=='done').length;document.getElementById('overdueCount').textContent=tasks.filter(t=>t.assignee==='me'&&t.status!=='done'&&daysAway(t.due)<0).length;document.getElementById('navCount').textContent=tasks.filter(t=>t.assignee==='me'&&t.status!=='done').length;document.getElementById('todayCount').textContent=tasks.filter(t=>t.assignee==='me'&&t.status!=='done'&&daysAway(t.due)===0).length;board.querySelectorAll('.check').forEach(b=>b.onclick=e=>{e.stopPropagation();toggleDone(b.dataset.id)});board.querySelectorAll('.add-task').forEach(b=>b.onclick=()=>{if(requireCloudReady())openModal(b.dataset.add)});board.querySelectorAll('.task').forEach(el=>el.onclick=()=>showToast('點擊任務可查看詳細資訊；此原型可透過勾選框完成任務。'));}
 function card(t){let who=people[t.assignee],over=daysAway(t.due)<0&&t.status!=='done';return `<article class="task"><h3 class="task-title">${esc(t.title)}</h3>${t.description&&t.description!=='—'?`<div class="task-desc">${esc(t.description)}</div>`:''}<div class="tags"><span class="tag ${t.importance}">${{high:'高重要性',medium:'中重要性',low:'低重要性'}[t.importance]}</span>${over?'<span class="tag overdue">已逾期</span>':''}</div><div class="task-foot"><span class="due ${over||daysAway(t.due)===0?'urgent':''}">◷ ${dueText(t)}</span><span class="assignee"><span class="mini-avatar">${who.initial}</span>${who.name}</span><button class="check" data-id="${t.id}" title="標記完成">${t.status==='done'?'✓':''}</button></div></article>`}
 function esc(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function toggleDone(id){let t=tasks.find(t=>t.id===id);if(t.status==='done')t.status='todo';else t.status='done';render();showToast(t.status==='done'?'任務已完成，做得好！':'已將任務移回待處理')}
+async function toggleDone(id){if(!requireCloudReady())return;let t=tasks.find(t=>String(t.id)===String(id));if(!t)return;const previousStatus=t.status;t.status=t.status==='done'?'todo':'done';render();try{await setDoc(doc(db,'users',currentUser.uid,'tasks',String(t.id)),taskData(t));showToast(t.status==='done'?'任務已完成，已儲存到雲端':'已將任務移回待處理並儲存到雲端')}catch(error){t.status=previousStatus;render();console.error('Task update failed:',error);showToast(firestoreErrorMessage(error))}}
 function openModal(status='todo'){document.getElementById('status').value=status;document.getElementById('modalBack').classList.add('show');setTimeout(()=>document.getElementById('title').focus(),50)}function closeModal(){document.getElementById('modalBack').classList.remove('show')}
-document.getElementById('newTask').onclick=()=>openModal();document.getElementById('closeModal').onclick=closeModal;document.getElementById('cancelModal').onclick=closeModal;document.getElementById('modalBack').onclick=e=>{if(e.target.id==='modalBack')closeModal()};document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
-document.getElementById('taskForm').onsubmit=e=>{e.preventDefault();let t={id:Date.now(),title:document.getElementById('title').value.trim(),description:document.getElementById('description').value.trim()||'—',due:document.getElementById('due').value,importance:document.getElementById('importance').value,status:document.getElementById('status').value,assignee:document.getElementById('assignee').value,reminder:document.getElementById('reminder').value};tasks.push(t);render();closeModal();e.target.reset();document.getElementById('status').value='todo';showToast('任務已建立，提醒設定已儲存')};
+document.getElementById('newTask').onclick=()=>{if(requireCloudReady())openModal()};document.getElementById('closeModal').onclick=closeModal;document.getElementById('cancelModal').onclick=closeModal;document.getElementById('modalBack').onclick=e=>{if(e.target.id==='modalBack')closeModal()};document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+document.getElementById('taskForm').onsubmit=async e=>{e.preventDefault();if(!requireCloudReady())return;const userId=currentUser.uid;const taskRef=doc(collection(db,'users',userId,'tasks'));let t={id:taskRef.id,title:document.getElementById('title').value.trim(),description:document.getElementById('description').value.trim()||'—',due:document.getElementById('due').value,importance:document.getElementById('importance').value,status:document.getElementById('status').value,assignee:document.getElementById('assignee').value,reminder:document.getElementById('reminder').value};const submit=e.target.querySelector('[type="submit"]');submit.disabled=true;tasks.push(t);render();try{await setDoc(taskRef,taskData(t));closeModal();e.target.reset();document.getElementById('status').value='todo';showToast('任務已建立並儲存到雲端')}catch(error){tasks=tasks.filter(task=>task.id!==t.id);render();console.error('Task creation failed:',error);showToast(firestoreErrorMessage(error))}finally{submit.disabled=false}};
 function renderTeam(){
 const board=document.getElementById('board');
 board.innerHTML=`<div class="team-grid">${teamMemberIds.map(id=>{const p=people[id];return `<article class="member-card"><span class="avatar">${esc(p.initial)}</span><div class="member-info"><strong>${esc(p.name)}</strong><div class="stat-label">Northstar Studio · 成員</div></div><div class="member-actions"><button type="button" data-edit-member="${id}">修改</button><button type="button" data-remove-member="${id}">移除</button></div></article>`}).join('')}<p class="team-note">成員名稱會同步更新指派給該成員的任務。此原型資料僅保存在目前頁面，重新載入後會還原。</p></div>`;
@@ -60,7 +61,7 @@ board.querySelectorAll('[data-edit-member]').forEach(btn=>btn.onclick=()=>editTe
 board.querySelectorAll('[data-remove-member]').forEach(btn=>btn.onclick=()=>removeTeamMember(btn.dataset.removeMember));
 }
 function editTeamMember(id){const person=people[id];const name=prompt('請輸入團隊成員的新名稱',person.name);if(name===null)return;const clean=name.trim();if(!clean){showToast('名稱不可為空白');return}person.name=clean;person.initial=clean[0];renderTeam();render();showToast('團隊成員資料已更新')}
-function removeTeamMember(id){const person=people[id];const assigned=tasks.filter(t=>t.assignee===id).length;if(!confirm(`確定移除「${person.name}」？${assigned?`目前有 ${assigned} 項任務指派給此成員，移除後會一併刪除這些示範任務。`:''}`))return;delete people[id];teamMemberIds.splice(teamMemberIds.indexOf(id),1);tasks=tasks.filter(t=>t.assignee!==id);renderTeam();render();showToast('已移除團隊成員')}
+async function removeTeamMember(id){if(!requireCloudReady())return;const person=people[id];const assigned=tasks.filter(t=>t.assignee===id);if(!confirm(`確定移除「${person.name}」？${assigned.length?`目前有 ${assigned.length} 項指派任務，移除後會一併刪除。`:''}`))return;const userId=currentUser.uid;try{if(assigned.length){const batch=writeBatch(db);assigned.forEach(task=>batch.delete(doc(db,'users',userId,'tasks',String(task.id))));await batch.commit()}delete people[id];teamMemberIds.splice(teamMemberIds.indexOf(id),1);tasks=tasks.filter(t=>t.assignee!==id);renderTeam();render();showToast('已移除團隊成員')}catch(error){console.error('Assigned task deletion failed:',error);showToast(firestoreErrorMessage(error))}}
 function showToast(msg){let el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>el.classList.remove('show'),2600)}
 document.getElementById('filterBtn').onclick=()=>{activeFilter=activeFilter==='all'?'open':activeFilter==='open'?'high':'all';document.getElementById('filterBtn').innerHTML=activeFilter==='all'?'☷　全部任務　⌄':activeFilter==='open'?'☷　未完成　⌄':'☷　高重要性　⌄';render()};document.getElementById('sortBtn').onclick=()=>{showToast('目前已依逾期狀態、截止日、重要性自動排序')};document.getElementById('notificationBtn').onclick=()=>showToast('通知中心：你有 2 項任務今日到期');document.getElementById('focusBtn').onclick=()=>showToast('專注時段已開始 · 25 分鐘');document.getElementById('suggestionBtn').onclick=()=>showToast('建議先完成逾期任務，再處理今天到期的高重要性任務。');document.getElementById('searchBtn').onclick=()=>{let q=prompt('搜尋任務名稱');if(q){let found=tasks.filter(t=>t.assignee==='me'&&t.title.toLowerCase().includes(q.toLowerCase()));showToast(found.length?`找到 ${found.length} 項任務：${found.map(t=>t.title).join('、')}`:'找不到符合的任務')}};
 const viewLabels={board:'優先任務',today:'今日行程',calendar:'行事曆',my:'我的任務',team:'團隊成員',settings:'通知設定'};document.querySelectorAll('.nav button').forEach(btn=>btn.onclick=()=>{document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');let v=btn.dataset.view;currentView=v;document.getElementById('crumb').textContent=viewLabels[v];if(v==='board'||v==='my'){document.getElementById('boardTitle').innerHTML=(v==='my'?'我的任務':'我的優先任務')+' <span style="color:#9aa49d;font-size:12px;font-weight:450">· 依截止日與重要性排序</span>';render()}else if(v==='settings'){document.getElementById('boardTitle').textContent='通知設定';document.getElementById('board').innerHTML='<div class="stat" style="grid-column:1/-1;display:block"><strong>電子郵件提醒</strong><p style="color:#7c8882">預設於截止前一天寄送提醒。建立任務時可針對個別任務調整時間。</p><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" checked> 啟用電子郵件提醒</label><p style="font-size:11px;color:#a36d38">尚未連結郵件服務；目前為原型展示設定。</p></div>'}else if(v==='team'){document.getElementById('boardTitle').textContent='團隊成員';renderTeam()}else{document.getElementById('boardTitle').textContent=v==='today'?'今日行程':'行事曆';document.getElementById('board').innerHTML='<div class="stat" style="grid-column:1/-1;display:block"><strong>今日，10 月 30 日</strong><p style="color:#7c8882">09:30　整理 Q4 產品發布計畫<br>11:00　確認首頁改版設計稿<br>14:30　團隊週會</p><span class="tag high">2 項任務今天到期</span></div>'}});
@@ -69,6 +70,7 @@ render();
 // Firebase Authentication — Google sign-in.
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
+import { getFirestore, collection, doc, getDoc, onSnapshot, serverTimestamp, setDoc, writeBatch } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyCMx9qZVkiISw2QY4o7GmMYG9TxR-s0zZ0',
@@ -81,7 +83,51 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
+let currentUser = null;
+let cloudReady = false;
+let stopTaskListener = null;
+
+function taskData(task) { const {id,...data}=task; return data; }
+function requireCloudReady() {
+  if (!currentUser) { showToast('請先使用 Google 登入，任務才能儲存到雲端。'); return false; }
+  if (!cloudReady) { showToast('雲端任務正在載入，請稍候再試。'); return false; }
+  return true;
+}
+function firestoreErrorMessage(error) {
+  if (error?.code === 'permission-denied' || error?.code === 'unauthenticated') return 'Firestore 權限不足，請確認已建立資料庫並部署 firestore.rules。';
+  if (error?.code === 'unavailable' || error?.code === 'deadline-exceeded') return '目前無法連線到 Firestore，請檢查網路後重試。';
+  return '雲端儲存失敗，請確認 Firestore 已啟用並稍後重試。';
+}
+async function loadCloudTasks(user) {
+  try {
+    const userRef=doc(db,'users',user.uid);
+    const profile=await getDoc(userRef);
+    if (currentUser?.uid!==user.uid) return;
+    if (!profile.exists()) {
+      const batch=writeBatch(db);
+      batch.set(userRef,{createdAt:serverTimestamp(),sampleTasksSeeded:true});
+      demoTasks.forEach(task=>batch.set(doc(db,'users',user.uid,'tasks',String(task.id)),taskData(task)));
+      await batch.commit();
+    }
+    if (currentUser?.uid!==user.uid) return;
+    stopTaskListener=onSnapshot(collection(db,'users',user.uid,'tasks'),snapshot=>{
+      if (currentUser?.uid!==user.uid) return;
+      tasks=snapshot.docs.map(item=>({id:item.id,...item.data()}));
+      cloudReady=true;
+      render();
+    },error=>{
+      cloudReady=false;
+      console.error('Firestore task listener failed:',error);
+      showToast(firestoreErrorMessage(error));
+    });
+  } catch (error) {
+    cloudReady=false;
+    console.error('Firestore initialization failed:',error);
+    if (currentUser?.uid===user.uid) showToast(firestoreErrorMessage(error));
+  }
+}
 const signInButton = document.getElementById('signInBtn');
 const signOutButton = document.getElementById('signOutBtn');
 const authUser = document.getElementById('authUser');
@@ -89,6 +135,9 @@ const authName = document.getElementById('authName');
 const authPhoto = document.getElementById('authPhoto');
 
 onAuthStateChanged(auth, user => {
+  if (stopTaskListener) { stopTaskListener(); stopTaskListener=null; }
+  currentUser=user;
+  cloudReady=false;
   signInButton.hidden = Boolean(user);
   authUser.hidden = !user;
   if (user) {
@@ -101,9 +150,17 @@ onAuthStateChanged(auth, user => {
     }
     document.querySelector('.top-avatar').hidden = true;
   } else {
+    tasks=demoTasks.map(task=>({...task}));
     authName.textContent = '';
     authPhoto.removeAttribute('src');
     document.querySelector('.top-avatar').hidden = false;
+  }
+  if (user) {
+    tasks=[];
+    render();
+    loadCloudTasks(user);
+  } else {
+    render();
   }
 });
 
